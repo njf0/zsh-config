@@ -1,0 +1,6 @@
+# Copy useful lines from this file into ~/.config/zsh/local.zsh.
+# That file is deliberately outside the repository and may contain private values.
+
+# export WORK_API_KEY="..."
+# export PATH="$HOME/.local/bin:$PATH"
+# alias work='cd "$HOME/path/to/work"'
