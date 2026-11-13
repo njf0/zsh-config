@@ -42,16 +42,20 @@ if [[ -n "$HOMEBREW_PREFIX" ]]; then
     fpath=("$HOMEBREW_PREFIX/share/zsh/site-functions" $fpath)
 fi
 
+zmodload zsh/complist
 autoload -Uz compinit vcs_info add-zsh-hook zmv
 compinit -d "$ZSH_CACHE_DIR/zcompdump"
 
-zstyle ':completion:*' menu select
-zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
+# Selectable, typo-tolerant completion with useful descriptions.
+zstyle ':completion:*' menu select=2
+zstyle ':completion:*' matcher-list '' 'm:{a-zA-Z}={A-Za-z}'
 zstyle ':completion:*' completer _complete _approximate
 zstyle ':completion:*' use-cache on
 zstyle ':completion:*' cache-path "$ZSH_CACHE_DIR/completion"
 zstyle ':completion:*:descriptions' format '%B%d%b'
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+zstyle ':completion:*' insert-unambiguous true
+zstyle ':completion:*' accept-exact '*(N)'
 
 if [[ -n "$HOMEBREW_PREFIX" && \
       -r "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]]; then
@@ -60,6 +64,10 @@ if [[ -n "$HOMEBREW_PREFIX" && \
 fi
 
 # Small aliases and helpers.
+if [[ -n "$HOMEBREW_PREFIX" ]]; then
+  alias brewup='brew update -v && brew upgrade'
+  alias brewdown='brew cleanup -v && brew autoremove -v && brew doctor'
+fi
 alias md='mkdir -p'
 alias pd='cd -'
 if [[ "$OSTYPE" == darwin* ]]; then
