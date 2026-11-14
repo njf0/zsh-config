@@ -63,6 +63,27 @@ The system Zsh remains available as a recovery shell. To switch back on macOS:
 chsh -s /bin/zsh
 ```
 
+## Optional ideas
+
+These are deliberately not installed or enabled yet:
+
+- [ ] Add a cached weather segment to the right prompt, showing an emoji and
+      temperature from wttr.in. Refresh it in the background, fail silently,
+      never block prompt rendering, and keep the location in `local.zsh`.
+- [ ] Add fzf shell integration for searchable history (`Ctrl-R`), file
+      insertion (`Ctrl-T`), and directory navigation (`Alt-C`).
+- [ ] Enrich the Git prompt with ahead/behind counts, stash count, conflicts,
+      and conspicuous merge or rebase states without slowing large repositories.
+- [ ] Send a macOS notification when a long-running command finishes while the
+      terminal is not focused.
+- [ ] Collapse completed commands to a small transient prompt while retaining
+      the fully decorated current prompt.
+- [ ] Add optional zoxide integration for learned directory jumping.
+
+Future additions should remain optional, portable, quick to start, and quiet
+when their dependencies or network services are unavailable. Machine-specific
+locations, account names, and other private values belong in `local.zsh`.
+
 ## Ruff
 
 The installer links the fallback configuration to:
