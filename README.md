@@ -1,39 +1,58 @@
-# Zsh config
+# Zsh and development config
 
-A small, portable Zsh configuration for macOS and Linux. It includes:
+A small, portable configuration for macOS and Linux. It includes:
 
-- Git branch and dirty-state information in the prompt
-- Previous-command timing
-- Completions, autosuggestions, and syntax highlighting when installed
+- A Zsh prompt with Git status and previous-command timing
+- Selectable, typo-tolerant completions
+- Optional autosuggestions and syntax highlighting
+- A minimal Homebrew package set
+- Personal Ruff defaults that yield to project configuration
 - A private, per-machine override file outside the repository
-
-## Homebrew plugins
-
-macOS already includes Zsh. Install the three optional plugins with:
-
-```sh
-brew install zsh-autosuggestions zsh-completions zsh-syntax-highlighting
-```
-
-The config detects Homebrew in the standard Apple Silicon, Intel macOS, and
-Linuxbrew locations. It still works if Homebrew or the plugins are unavailable.
 
 ## Install
 
-Clone the public repository over HTTPS, so the work Mac does not need a GitHub
-login or SSH key:
+macOS already includes Zsh. Install Homebrew first if it is not already
+available, then clone this public repository over HTTPS:
 
 ```sh
 git clone https://github.com/njf0/zsh-config.git ~/.config/zsh-config
-~/.config/zsh-config/install.zsh
-exec zsh
+~/.config/zsh-config/install.zsh --brew
+exec zsh -l
 ```
 
-The installer backs up an existing `~/.zshrc` before linking this config.
+The installer backs up existing files before linking `.zshrc`, `.zprofile`, and
+the Ruff fallback into their standard locations. Omit `--brew` to install only
+the configuration links.
+
+## Homebrew packages
+
+The deliberately small `Brewfile` installs:
+
+- Ruff and uv
+- zsh-autosuggestions
+- zsh-completions
+- zsh-syntax-highlighting
+
+Install or reconcile it independently with:
+
+```sh
+brew bundle --file ~/.config/zsh-config/Brewfile --no-upgrade
+```
+
+## Ruff
+
+The installer links the fallback configuration to:
+
+```text
+~/.config/ruff/ruff.toml
+```
+
+Ruff uses it when a project has no Ruff configuration. A project's own
+`pyproject.toml`, `ruff.toml`, or `.ruff.toml` remains authoritative.
 
 ## Private or machine-specific configuration
 
-Put private values and work-specific paths in:
+Put private values, work-specific paths, and aliases in:
 
 ```text
 ~/.config/zsh/local.zsh

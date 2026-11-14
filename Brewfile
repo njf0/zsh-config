@@ -1,0 +1,5 @@
+brew "ruff"
+brew "uv"
+brew "zsh-autosuggestions"
+brew "zsh-completions"
+brew "zsh-syntax-highlighting"

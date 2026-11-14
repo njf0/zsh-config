@@ -163,7 +163,8 @@ add-zsh-hook precmd update_vcs_info
 PROMPT='${COMMAND_SPEED:+${COMMAND_SPEED} }%F{yellow}${COMMAND_ELAPSED}%f${COMMAND_ELAPSED:+ }%F{cyan}%n%f@%F{blue}%m%f:%F{magenta}%1~%f${vcs_info_msg_0_} %(?.%F{green}✓.%F{red}✗)%f '
 
 # Put private keys, work-specific paths, and other machine-local settings here.
-typeset -g ZSH_LOCAL_CONFIG="${ZSH_LOCAL_CONFIG:-$HOME/.config/zsh/local.zsh}"
+typeset -g ZSH_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/zsh"
+typeset -g ZSH_LOCAL_CONFIG="${ZSH_LOCAL_CONFIG:-$ZSH_CONFIG_DIR/local.zsh}"
 [[ -r "$ZSH_LOCAL_CONFIG" ]] && source "$ZSH_LOCAL_CONFIG"
 
 # zsh-syntax-highlighting should be sourced after all other shell configuration.
