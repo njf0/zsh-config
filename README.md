@@ -5,6 +5,7 @@ A small, portable configuration for macOS and Linux. It includes:
 - A Zsh prompt with Git status and previous-command timing
 - Selectable, typo-tolerant completions
 - Optional autosuggestions and syntax highlighting
+- Homebrew-managed Zsh as the login shell when explicitly requested
 - A minimal Homebrew package set
 - Personal Ruff defaults that yield to project configuration
 - A private, per-machine override file outside the repository
@@ -16,19 +17,23 @@ available, then clone this public repository over HTTPS:
 
 ```sh
 git clone https://github.com/njf0/zsh-config.git ~/.config/zsh-config
-~/.config/zsh-config/install.zsh --brew
-exec zsh -l
+~/.config/zsh-config/install.zsh --brew --set-shell
 ```
 
 The installer backs up existing files before linking `.zshrc`, `.zprofile`, and
-the Ruff fallback into their standard locations. Omit `--brew` to install only
-the configuration links.
+the Ruff fallback into their standard locations. It never edits `/etc/shells`
+with elevated privileges: if Homebrew Zsh is not yet registered, it prints the
+single command to run before retrying `--set-shell`. Fully quit and reopen the
+terminal after changing the login shell.
+
+Omit both options to install only the configuration links.
 
 ## Homebrew packages
 
 The deliberately small `Brewfile` installs:
 
 - Ruff and uv
+- Zsh
 - zsh-autosuggestions
 - zsh-completions
 - zsh-syntax-highlighting
@@ -37,6 +42,25 @@ Install or reconcile it independently with:
 
 ```sh
 brew bundle --file ~/.config/zsh-config/Brewfile --no-upgrade
+```
+
+## Homebrew Zsh as the login shell
+
+The `--set-shell` option validates that Homebrew Zsh exists and is listed in
+`/etc/shells` before calling `chsh`. The path is determined from `brew --prefix`,
+so the same installer works on Intel macOS, Apple Silicon, and Linuxbrew.
+
+Verify the result after reopening the terminal:
+
+```sh
+echo "$SHELL"
+zsh --version
+```
+
+The system Zsh remains available as a recovery shell. To switch back on macOS:
+
+```sh
+chsh -s /bin/zsh
 ```
 
 ## Ruff

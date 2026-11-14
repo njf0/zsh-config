@@ -1,5 +1,6 @@
 brew "ruff"
 brew "uv"
+brew "zsh"
 brew "zsh-autosuggestions"
 brew "zsh-completions"
 brew "zsh-syntax-highlighting"

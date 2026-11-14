@@ -6,13 +6,22 @@ repo_dir="${0:A:h}"
 config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
 local_dir="$config_home/zsh"
 install_brew=false
+set_shell=false
 backup_stamp="$(date +%Y%m%d-%H%M%S)"
 
-if (( $# > 1 )) || [[ "${1:-}" != "" && "${1:-}" != "--brew" ]]; then
-  print -u2 "Usage: $0 [--brew]"
-  exit 2
-fi
-[[ "${1:-}" == "--brew" ]] && install_brew=true
+for argument in "$@"; do
+  case "$argument" in
+    --brew) install_brew=true ;;
+    --set-shell)
+      install_brew=true
+      set_shell=true
+      ;;
+    *)
+      print -u2 "Usage: $0 [--brew] [--set-shell]"
+      exit 2
+      ;;
+  esac
+done
 
 function link_config() {
   local source="$1"
@@ -52,6 +61,30 @@ if $install_brew; then
     exit 1
   fi
   brew bundle --file "$repo_dir/Brewfile" --no-upgrade
+fi
+
+if $set_shell; then
+  brew_zsh="$(brew --prefix)/bin/zsh"
+
+  if [[ ! -x "$brew_zsh" ]]; then
+    print -u2 "Homebrew Zsh was not installed at $brew_zsh"
+    exit 1
+  fi
+
+  if ! grep -Fxq "$brew_zsh" /etc/shells; then
+    print -u2 "Homebrew Zsh must be registered as an allowed login shell."
+    print -u2 "Run this command, then rerun the installer with --set-shell:"
+    print -u2 "  echo '$brew_zsh' | sudo tee -a /etc/shells"
+    exit 1
+  fi
+
+  if [[ "$SHELL" == "$brew_zsh" ]]; then
+    print "Homebrew Zsh is already the login shell: $brew_zsh"
+  else
+    print "Changing the login shell to: $brew_zsh"
+    chsh -s "$brew_zsh"
+    print "The login shell was changed. Fully quit and reopen the terminal."
+  fi
 fi
 
 if [[ -n "${ZDOTDIR:-}" || -n "${XDG_CONFIG_HOME:-}" ]]; then
