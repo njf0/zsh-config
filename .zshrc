@@ -3,8 +3,8 @@
 # Keep per-machine state out of this repository.
 typeset -g ZSH_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
 typeset -g ZSH_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/zsh"
-[[ -d "$ZSH_CACHE_DIR" ]] || mkdir -p "$ZSH_CACHE_DIR"
-[[ -d "$ZSH_STATE_DIR" ]] || mkdir -p "$ZSH_STATE_DIR"
+[[ -d "$ZSH_CACHE_DIR" ]] || mkdir -p -m 700 "$ZSH_CACHE_DIR"
+[[ -d "$ZSH_STATE_DIR" ]] || mkdir -p -m 700 "$ZSH_STATE_DIR"
 
 HISTFILE="$ZSH_STATE_DIR/history"
 HISTSIZE=50000
