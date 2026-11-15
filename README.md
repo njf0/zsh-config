@@ -34,6 +34,26 @@ validated and used unchanged: it is never pulled, reset, or overwritten. For a
 reproducible bootstrap version, replace `main` in the URL with a release tag or
 commit SHA.
 
+### Replacing an older dotfiles setup
+
+If the current shell already exports `ZDOTDIR` or points `XDG_CONFIG_HOME` at an
+older dotfiles repository, use the migration entry point instead:
+
+```sh
+migration="$(curl -fsSL https://raw.githubusercontent.com/njf0/zsh-config/main/migrate-old-dotfiles.sh)" && /bin/sh -c "$migration"
+```
+
+It shows its plan and asks before making changes. The migration preserves an
+existing `~/.zshenv` under a timestamped backup name, clears the inherited
+variables for the new installation, and then runs the normal bootstrap using
+`~/.config`. The regular installer separately backs up `~/.zshrc` and
+`~/.zprofile`. The old dotfiles repository is not changed or deleted.
+
+If `.profile`, `.bash_profile`, or `.bashrc` also mentions `ZDOTDIR` or
+`XDG_CONFIG_HOME`, the migration reports the file for later review rather than
+editing unrelated shell startup code automatically. Fully close WSL and reopen
+it after the migration.
+
 ### Manual setup
 
 `install.sh` is the portable post-clone entry point for macOS and Linux. It

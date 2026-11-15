@@ -7,6 +7,7 @@ config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
 repo_dir="${ZSH_CONFIG_REPO_DIR:-$config_home/zsh-config}"
 assume_yes="${ZSH_CONFIG_ASSUME_YES:-0}"
 skip_shell="${ZSH_CONFIG_SKIP_SHELL:-0}"
+migration_url="https://raw.githubusercontent.com/njf0/zsh-config/main/migrate-old-dotfiles.sh"
 
 say() {
   printf '%s\n' "$*"
@@ -53,6 +54,25 @@ find_brew() {
 
 if [ "$(id -u)" -eq 0 ]; then
   fail "Run this bootstrap as your normal user, not as root."
+fi
+
+legacy_loader=""
+if [ -r "$HOME/.zshenv" ] && \
+  grep -Eq 'ZDOTDIR|XDG_CONFIG_HOME' "$HOME/.zshenv"
+then
+  legacy_loader="$HOME/.zshenv"
+fi
+
+if [ -n "${ZDOTDIR:-}" ] || [ -n "$legacy_loader" ]; then
+  if [ -n "${ZDOTDIR:-}" ]; then
+    say "An existing ZDOTDIR is active: $ZDOTDIR"
+  fi
+  if [ -n "$legacy_loader" ]; then
+    say "An existing .zshenv manages shell configuration: $legacy_loader"
+  fi
+  say "Use the migration setup so the new repository is not installed inside the old configuration:"
+  say "  migration=\"\$(curl -fsSL $migration_url)\" && /bin/sh -c \"\$migration\""
+  exit 1
 fi
 
 system_name=$(uname -s)
