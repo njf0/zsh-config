@@ -13,90 +13,59 @@ A small, portable configuration for macOS and Linux. It includes:
 
 ## Install
 
-### Bare-machine setup
+### One-command setup
 
 From a macOS terminal or an Ubuntu/Debian WSL shell, paste:
 
 ```sh
 (command -v curl >/dev/null 2>&1 || {
   sudo apt-get update && sudo apt-get install -y curl
-}) && setup="$(curl -fsSL https://raw.githubusercontent.com/njf0/zsh-config/main/bootstrap-machine.sh)" && /bin/sh -c "$setup"
+}) && setup="$(curl -fsSL https://raw.githubusercontent.com/njf0/zsh-config/main/setup.sh)" && /bin/sh -c "$setup"
 ```
 
-The complete bootstrap is downloaded before it is executed. It shows its plan
-and asks before making changes. On WSL it uses `apt` only for missing Homebrew
-prerequisites, then Homebrew and the repository's Brewfile manage the terminal
-tools. It installs Homebrew when necessary, clones this public repository, and
-offers to register Homebrew Zsh as the login shell.
+The complete setup script is downloaded before it is executed. It shows one
+plan and asks before making changes. On WSL it uses `apt` only for missing
+Homebrew prerequisites, then Homebrew and the repository's Brewfile manage the
+terminal tools. It installs Homebrew when necessary, clones this public
+repository, links the configuration, and offers to select Homebrew Zsh as the
+login shell.
 
-The bootstrap is safe to rerun after interruption. An existing checkout is
-validated and used unchanged: it is never pulled, reset, or overwritten. For a
-reproducible bootstrap version, replace `main` in the URL with a release tag or
-commit SHA.
-
-### Replacing an older dotfiles setup
-
-If the current shell already exports `ZDOTDIR` or points `XDG_CONFIG_HOME` at an
-older dotfiles repository, use the migration entry point instead:
-
-```sh
-migration="$(curl -fsSL https://raw.githubusercontent.com/njf0/zsh-config/main/migrate-old-dotfiles.sh)" && /bin/sh -c "$migration"
-```
-
-It shows its plan and asks before making changes. The migration preserves an
-existing `~/.zshenv` under a timestamped backup name, clears the inherited
-variables for the new installation, and then runs the normal bootstrap using
-`~/.config`. The regular installer separately backs up `~/.zshrc` and
-`~/.zprofile`. The old dotfiles repository is not changed or deleted.
+The same command also replaces an older dotfiles setup. An inherited `ZDOTDIR`,
+or a `~/.zshenv` which configures it, is detected before the destination is
+chosen. The script preserves `~/.zshenv` under a timestamped backup name, clears
+the inherited variables for setup, and uses `~/.config`. Existing `.zshrc` and
+`.zprofile` files are backed up separately. The old dotfiles repository is not
+changed or deleted.
 
 If `.profile`, `.bash_profile`, or `.bashrc` also mentions `ZDOTDIR` or
-`XDG_CONFIG_HOME`, the migration reports the file for later review rather than
+`XDG_CONFIG_HOME`, setup reports the file for later review rather than
 editing unrelated shell startup code automatically. Fully close WSL and reopen
-it after the migration.
+it after setup.
 
-### Manual setup
+Setup is safe to rerun after interruption. An existing checkout is validated
+and used unchanged: it is never pulled, reset, or overwritten. For a
+reproducible setup version, replace `main` in the URL with a release tag or
+commit SHA.
 
-`install.sh` is the portable post-clone entry point for macOS and Linux. It
-locates Homebrew, uses an existing Zsh when available, or installs Homebrew Zsh
-before delegating to the main installer.
+### Running from a checkout
 
-#### macOS
-
-Install Homebrew first if it is not already available, then clone this public
-repository over HTTPS:
+The same script works after cloning the repository manually:
 
 ```sh
 git clone https://github.com/njf0/zsh-config.git ~/.config/zsh-config
-~/.config/zsh-config/install.sh --brew --set-shell
+~/.config/zsh-config/setup.sh
 ```
 
-#### WSL 2
-
-On a new Ubuntu or Debian WSL 2 distribution, install Homebrew's Linux
-prerequisites and Homebrew itself:
+Useful options are:
 
 ```sh
-sudo apt update
-sudo apt install -y build-essential procps curl file git
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+./setup.sh --links-only # link config without installing packages
+./setup.sh --skip-shell # full setup without changing the login shell
+./setup.sh --yes        # accept prompts for automation
 ```
 
-Then clone and install without needing Zsh in advance:
-
-```sh
-git clone https://github.com/njf0/zsh-config.git ~/.config/zsh-config
-~/.config/zsh-config/install.sh --brew --set-shell
-```
-
-The post-clone installer backs up existing files before linking `.zshrc`,
-`.zprofile`, and the Ruff fallback into their standard locations. It never
-edits `/etc/shells` with elevated privileges: if Homebrew Zsh is not yet
-registered, it prints the single command to run before retrying `--set-shell`.
-The bare-machine bootstrap can perform that registration only after explicitly
-asking. Fully quit and reopen the terminal after changing the login shell.
-
-Omit both options to install only the configuration links.
+`setup.sh` is deliberately POSIX shell rather than Zsh, because its first job
+may be to install Zsh. The comments in the script describe each setup stage.
 
 ## Homebrew packages
 
@@ -135,9 +104,9 @@ fallback otherwise.
 
 ## Homebrew Zsh as the login shell
 
-The `--set-shell` option validates that Homebrew Zsh exists and is listed in
-`/etc/shells` before calling `chsh`. The path is determined from `brew --prefix`,
-so the same installer works on Intel macOS, Apple Silicon, and Linuxbrew.
+Full setup offers to register and select Homebrew Zsh as the login shell. Skip
+that prompt with `--skip-shell`. The path is determined from `brew --prefix`, so
+the same setup works on Intel macOS, Apple Silicon, and Linuxbrew.
 
 Verify the result after reopening the terminal:
 
@@ -347,7 +316,7 @@ locations, account names, and other private values belong in `local.zsh`.
 
 ## Ruff
 
-The installer links the fallback configuration to:
+Setup links the fallback configuration to:
 
 ```text
 ~/.config/ruff/ruff.toml
