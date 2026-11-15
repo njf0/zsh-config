@@ -283,12 +283,16 @@ if [ "$links_only" != 1 ]; then
 fi
 
 # A downloaded copy clones the repository. A local copy uses its own checkout.
-# Existing destinations are validated but never pulled, reset, or overwritten.
+# Existing destinations are validated. They remain untouched unless required
+# files are missing, in which case a clean checkout may be fast-forwarded after
+# a separate confirmation.
+reused_checkout=0
 if [ -z "$local_repo" ]; then
   command -v git >/dev/null 2>&1 ||
     fail "Git is required to clone the configuration repository."
 
   if [ -e "$repo_dir" ]; then
+    reused_checkout=1
     git -C "$repo_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1 ||
       fail "$repo_dir exists but is not a Git working tree."
     origin_url=$(git -C "$repo_dir" remote get-url origin 2>/dev/null || true)
@@ -297,22 +301,50 @@ if [ -z "$local_repo" ]; then
     if [ -z "$origin_url" ] || [ "$origin_base" != "$expected_base" ]; then
       fail "$repo_dir has an unexpected origin: ${origin_url:-<none>}"
     fi
-    say "Using the existing checkout unchanged: $repo_dir"
+    say "Using the existing checkout: $repo_dir"
   else
     mkdir -p "$(dirname "$repo_dir")"
     git clone -- "$repo_url" "$repo_dir"
   fi
 fi
 
-for required_file in \
-  "$repo_dir/.zshrc" \
-  "$repo_dir/.zprofile" \
-  "$repo_dir/Brewfile" \
-  "$repo_dir/local.zsh.example" \
-  "$repo_dir/ruff/ruff.toml"
-do
-  [ -f "$required_file" ] || fail "Required file is missing: $required_file"
-done
+find_missing_required_file() {
+  missing_required_file=""
+  for required_file in \
+    "$repo_dir/.zshrc" \
+    "$repo_dir/.zprofile" \
+    "$repo_dir/Brewfile" \
+    "$repo_dir/local.zsh.example" \
+    "$repo_dir/ruff/ruff.toml"
+  do
+    if [ ! -f "$required_file" ]; then
+      missing_required_file="$required_file"
+      return
+    fi
+  done
+}
+
+find_missing_required_file
+if [ -n "$missing_required_file" ] && [ "$reused_checkout" = 1 ]; then
+  say "Existing checkout is missing a required file: $missing_required_file"
+
+  if [ -n "$(git -C "$repo_dir" status --porcelain)" ]; then
+    fail "The checkout has local changes. Review them with: git -C '$repo_dir' status --short"
+  fi
+
+  if ! confirm "Fast-forward the existing checkout from its upstream branch?"; then
+    fail "Update it explicitly with: git -C '$repo_dir' pull --ff-only"
+  fi
+
+  if ! git -C "$repo_dir" pull --ff-only; then
+    fail "The checkout could not be fast-forwarded. Inspect it with: git -C '$repo_dir' status"
+  fi
+
+  find_missing_required_file
+fi
+
+[ -z "$missing_required_file" ] ||
+  fail "Required file is missing: $missing_required_file"
 
 # Link each shared file using an absolute source. Conflicting files and symlinks
 # receive unique timestamped backups, making migration and reruns recoverable.

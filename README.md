@@ -42,10 +42,13 @@ If `.profile`, `.bash_profile`, or `.bashrc` also mentions `ZDOTDIR` or
 editing unrelated shell startup code automatically. Fully close WSL and reopen
 it after setup.
 
-Setup is safe to rerun after interruption. An existing checkout is validated
-and used unchanged: it is never pulled, reset, or overwritten. For a
-reproducible setup version, replace `main` in the URL with a release tag or
-commit SHA.
+Setup is safe to rerun after interruption. An existing complete checkout is
+validated and used unchanged. If it is too old to contain a file required by
+the downloaded setup version, a clean checkout can be fast-forwarded with
+`git pull --ff-only` only after a separate confirmation. Setup refuses to
+update a checkout with local changes or one which cannot fast-forward; it never
+resets or overwrites it. For a reproducible setup version, replace `main` in the
+URL with a release tag or commit SHA.
 
 ### Running from a checkout
 
