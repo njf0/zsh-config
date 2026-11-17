@@ -64,11 +64,31 @@ Useful options are:
 ```sh
 ./setup.sh --links-only # link config without installing packages
 ./setup.sh --skip-shell # full setup without changing the login shell
+./setup.sh --repair-completions # repair Homebrew completion permissions only
 ./setup.sh --yes        # accept prompts for automation
 ```
 
 `setup.sh` is deliberately POSIX shell rather than Zsh, because its first job
 may be to install Zsh. The comments in the script describe each setup stage.
+
+### Zsh completion security
+
+If `compinit` reports insecure directories, do not choose to ignore them. Pull
+the current setup script and run its focused repair mode:
+
+```sh
+git -C ~/.config/zsh-config pull --ff-only
+~/.config/zsh-config/setup.sh --repair-completions
+exec zsh -l
+```
+
+The repair runs Zsh's own `compaudit`, shows every insecure path, and asks
+before removing group/other write permission. It only changes paths beneath
+the detected Homebrew prefix. Paths outside Homebrew are reported but left
+untouched, and the security check is never disabled with `compinit -u`.
+
+Full setup runs the same audit after installing the Brewfile, so new machines
+normally receive the fix before their first configured Zsh session.
 
 ## Homebrew packages
 

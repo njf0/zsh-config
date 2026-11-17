@@ -10,6 +10,7 @@ repo_url="${ZSH_CONFIG_REPO_URL:-https://github.com/njf0/zsh-config.git}"
 assume_yes="${ZSH_CONFIG_ASSUME_YES:-0}"
 skip_shell="${ZSH_CONFIG_SKIP_SHELL:-0}"
 links_only=0
+repair_completions=0
 
 say() {
   printf '%s\n' "$*"
@@ -22,11 +23,12 @@ fail() {
 
 usage() {
   cat <<'EOF'
-Usage: setup.sh [--links-only] [--skip-shell] [--yes]
+Usage: setup.sh [--links-only] [--skip-shell] [--repair-completions] [--yes]
 
-  --links-only  Link configuration without installing Homebrew packages.
-  --skip-shell  Do not offer to change the login shell.
-  --yes         Accept confirmation prompts (intended for automation).
+  --links-only          Link configuration without installing Homebrew packages.
+  --skip-shell          Do not offer to change the login shell.
+  --repair-completions  Audit and repair Homebrew Zsh completion permissions only.
+  --yes                 Accept confirmation prompts (intended for automation).
 EOF
 }
 
@@ -44,10 +46,152 @@ confirm() {
   esac
 }
 
+find_brew() {
+  if command -v brew >/dev/null 2>&1; then
+    command -v brew
+    return 0
+  fi
+
+  for candidate in \
+    /opt/homebrew/bin/brew \
+    /usr/local/bin/brew \
+    /home/linuxbrew/.linuxbrew/bin/brew
+  do
+    if [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+# Run the same security audit used by compinit, with the two Homebrew completion
+# locations added to Zsh's normal function path.
+run_completion_audit() {
+  "$brew_zsh" -dfc '
+    brew_prefix=$1
+    [[ -d "$brew_prefix/share/zsh-completions" ]] &&
+      fpath=("$brew_prefix/share/zsh-completions" $fpath)
+    [[ -d "$brew_prefix/share/zsh/site-functions" ]] &&
+      fpath=("$brew_prefix/share/zsh/site-functions" $fpath)
+    autoload -Uz compaudit
+    compaudit
+  ' zsh-completion-audit "$brew_prefix" 2>/dev/null
+}
+
+# compaudit returns 1 when it successfully finds insecure paths, so nonzero
+# alone is not an execution failure. An empty result with status 1, or any other
+# status, means the audit itself could not be trusted.
+collect_completion_audit() {
+  audit_output=""
+  if audit_output=$(run_completion_audit); then
+    audit_status=0
+  else
+    audit_status=$?
+  fi
+
+  case "$audit_status" in
+    0) return 0 ;;
+    1) [ -n "$audit_output" ] && return 0 ;;
+  esac
+
+  return 1
+}
+
+# compinit refuses directories writable by a group or by everyone because an
+# attacker could place shell code there. Repair only paths inside Homebrew's
+# own prefix; never bypass the audit with compinit -u and never chmod unrelated
+# system or work-managed directories.
+repair_completion_permissions() {
+  if [ -z "${brew_bin:-}" ]; then
+    brew_bin=$(find_brew || true)
+  fi
+  [ -n "$brew_bin" ] || fail "Homebrew is required to audit Zsh completions."
+
+  brew_prefix=$("$brew_bin" --prefix)
+  brew_zsh="$brew_prefix/bin/zsh"
+  [ -x "$brew_zsh" ] || fail "Homebrew Zsh is missing at $brew_zsh"
+
+  collect_completion_audit || fail "Zsh could not complete its completion permission audit."
+  if [ -z "$audit_output" ]; then
+    say "Zsh completion permissions are already secure."
+    return 0
+  fi
+
+  say "Zsh reports these insecure completion paths:"
+  printf '%s\n' "$audit_output"
+
+  eligible_paths=""
+  unmanaged_paths=""
+  old_ifs=$IFS
+  IFS='
+'
+  for insecure_path in $audit_output; do
+    [ -n "$insecure_path" ] || continue
+    case "$insecure_path" in
+      "$brew_prefix"|"$brew_prefix"/*)
+        eligible_paths="${eligible_paths}${eligible_paths:+
+}$insecure_path"
+        ;;
+      *)
+        unmanaged_paths="${unmanaged_paths}${unmanaged_paths:+
+}$insecure_path"
+        ;;
+    esac
+  done
+  IFS=$old_ifs
+
+  if [ -n "$unmanaged_paths" ]; then
+    say "Setup will not change paths outside Homebrew:"
+    printf '%s\n' "$unmanaged_paths"
+  fi
+
+  if [ -z "$eligible_paths" ]; then
+    say "No Homebrew paths are eligible for automatic repair."
+    return 1
+  fi
+
+  if ! confirm "Remove group/other write permission from the Homebrew paths above?"; then
+    say "Completion permission repair skipped."
+    return 0
+  fi
+
+  chmod_failed=0
+  old_ifs=$IFS
+  IFS='
+'
+  for insecure_path in $eligible_paths; do
+    if chmod go-w "$insecure_path"; then
+      say "Secured: $insecure_path"
+    else
+      say "Could not change: $insecure_path"
+      chmod_failed=1
+    fi
+  done
+  IFS=$old_ifs
+
+  if ! collect_completion_audit; then
+    say "Zsh could not repeat its completion permission audit."
+    return 1
+  fi
+  remaining_paths=$audit_output
+  if [ -z "$remaining_paths" ]; then
+    say "Zsh completion permission audit passed."
+    return 0
+  fi
+
+  say "Insecure completion paths still remain:"
+  printf '%s\n' "$remaining_paths"
+  [ "$chmod_failed" = 0 ] || say "Some Homebrew paths may require owner or administrator action."
+  return 1
+}
+
 for argument in "$@"; do
   case "$argument" in
     --links-only) links_only=1 ;;
     --skip-shell) skip_shell=1 ;;
+    --repair-completions) repair_completions=1 ;;
     --yes) assume_yes=1 ;;
     -h|--help)
       usage
@@ -62,6 +206,17 @@ done
 
 if [ "$(id -u)" -eq 0 ]; then
   fail "Run setup as your normal user, not as root."
+fi
+
+if [ "$repair_completions" = 1 ]; then
+  if [ "$links_only" = 1 ]; then
+    fail "--repair-completions cannot be combined with --links-only."
+  fi
+  if repair_completion_permissions; then
+    exit 0
+  else
+    exit 1
+  fi
 fi
 
 # A directly executed copy lives beside the repository files. A copy downloaded
@@ -213,26 +368,6 @@ fi
 
 # Homebrew is installed before cloning so Git is available even on a genuinely
 # minimal machine. links-only mode never installs system or Homebrew packages.
-find_brew() {
-  if command -v brew >/dev/null 2>&1; then
-    command -v brew
-    return 0
-  fi
-
-  for candidate in \
-    /opt/homebrew/bin/brew \
-    /usr/local/bin/brew \
-    /home/linuxbrew/.linuxbrew/bin/brew
-  do
-    if [ -x "$candidate" ]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-
-  return 1
-}
-
 brew_bin=""
 if [ "$links_only" != 1 ]; then
   if [ "$package_family" = debian ]; then
@@ -383,6 +518,9 @@ fi
 
 if [ "$links_only" != 1 ]; then
   "$brew_bin" bundle --file "$repo_dir/Brewfile" --no-upgrade
+  if ! repair_completion_permissions; then
+    say "Completion permissions still require manual review."
+  fi
 fi
 
 # Changing the login shell remains a separate prompt. Registering Homebrew Zsh
